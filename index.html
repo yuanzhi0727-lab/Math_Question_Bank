@@ -271,6 +271,35 @@
       alert("已成功複製打包語法！");
     }
 
+function copyPreviewContent() {
+      const previewList = document.getElementById('previewList');
+      if (!previewList || previewList.innerText.includes('未找到符合條件的題目') || previewList.innerText.includes('請點擊篩選條件')) {
+        alert('目前沒有可複製的題目！');
+        return;
+      }
+
+      // 選取預覽區的所有內容（保留 HTML 格式與公式）
+      const range = document.createRange();
+      range.selectNodeContents(previewList);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          alert('已成功複製題目內文！現在可以直接開啟 Word 按 Ctrl + V 貼上了。');
+        } else {
+          alert('複製失敗，請直接手動框選預覽區內容複製。');
+        }
+      } catch (err) {
+        alert('複製失敗：' + err);
+      }
+
+      // 清除選擇狀態
+      selection.removeAllRanges();
+    }
+
     window.onload = initFilterUI;
   </script>
 </body>
