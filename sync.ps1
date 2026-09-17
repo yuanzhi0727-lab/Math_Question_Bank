@@ -1,4 +1,4 @@
-﻿$items = Get-ChildItem questions/*.md | ForEach-Object {
+﻿$items = Get-ChildItem Questions/*.md | ForEach-Object {
     $fn = $_.Name
     $raw = Get-Content $_.FullName -Raw -Encoding utf8
     
@@ -63,7 +63,7 @@
     $catStr = ($cleanCats | ForEach-Object { "`"$($_)`"" }) -join ', '
     $conStr = ($cleanCons | ForEach-Object { "`"$($_)`"" }) -join ', '
 
-    "{ file: `"questions/$fn`", difficulty: `"$difficulty`", categories: [$catStr], concepts: [$conStr] }"
+    "{ file: `"Questions/$fn`", difficulty: `"$difficulty`", categories: [$catStr], concepts: [$conStr] }"
 }
 
 $jsonBlock = "const questionBank = [`n  " + ($items -join ",`n  ") + "`n];"
