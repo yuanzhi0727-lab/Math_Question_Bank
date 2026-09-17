@@ -101,18 +101,18 @@
   <script>
     // 資料庫（由 sync.ps1 自動更新）
     const questionBank = [
-      { file: "Questions/Q2026-002.md", difficulty: "Medium", categories: ["TRML"], concepts: ["代數", "分式方程式"] },
-      { file: "Questions/Q2026-003.md", difficulty: "Medium", categories: ["TRML"], concepts: ["排列組合"] },
-      { file: "Questions/Q2026-004.md", difficulty: "Hard", categories: ["TRML"], concepts: ["數論", "質數與完全平方數"] },
-      { file: "Questions/Q2026-005.md", difficulty: "Easy", categories: ["TRML"], concepts: ["矩陣", "同餘與週期"] },
-      { file: "Questions/Q2026-006.md", difficulty: "Medium", categories: ["TRML"], concepts: ["遞迴與二項式定理", "同餘與週期"] },
-      { file: "Questions/Q2026-007.md", difficulty: "Medium", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
-      { file: "Questions/Q2026-008.md", difficulty: "Easy", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
-      { file: "Questions/Q2026-009.md", difficulty: "Medium", categories: ["教甄"], concepts: ["函數", "函數方程", "算幾不等式", "迭代技巧"] },
-      { file: "Questions/Q2026-010.md", difficulty: "Medium", categories: ["學科能力競賽"], concepts: ["函數", "函數方程", "迭代技巧"] },
-      { file: "Questions/Q2026-011.md", difficulty: "Hard", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
-      { file: "Questions/Q2026-012.md", difficulty: "未標示", categories: [], concepts: [] }
-    ];
+  { file: "Questions/Q2026-002.md", difficulty: "Medium", categories: ["TRML"], concepts: ["代數", "分式方程式"] },
+  { file: "Questions/Q2026-003.md", difficulty: "Medium", categories: ["TRML"], concepts: ["排列組合"] },
+  { file: "Questions/Q2026-004.md", difficulty: "Hard", categories: ["TRML"], concepts: ["數論", "質數與完全平方數"] },
+  { file: "Questions/Q2026-005.md", difficulty: "Easy", categories: ["TRML"], concepts: ["矩陣", "同餘與週期"] },
+  { file: "Questions/Q2026-006.md", difficulty: "Medium", categories: ["TRML"], concepts: ["遞迴與二項式定理", "同餘與週期"] },
+  { file: "Questions/Q2026-007.md", difficulty: "Medium", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
+  { file: "Questions/Q2026-008.md", difficulty: "Easy", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
+  { file: "Questions/Q2026-009.md", difficulty: "Medium", categories: ["教甄"], concepts: ["函數", "函數方程", "算幾不等式", "迭代技巧"] },
+  { file: "Questions/Q2026-010.md", difficulty: "Medium", categories: ["學科能力競賽"], concepts: ["函數", "函數方程", "迭代技巧"] },
+  { file: "Questions/Q2026-011.md", difficulty: "Hard", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
+  { file: "Questions/Q2026-012.md", difficulty: "未標示", categories: [], concepts: [] }
+];
 
     // 當前篩選狀態
     let selectedCategory = "ALL";
@@ -243,7 +243,7 @@
 
         try {
           // 使用 encodeURI 確保路徑中若有特殊字元可正確讀取
-          const res = await fetch(encodeURI(q.file));
+          const res = await fetch(encodeURI('./' + q.file));
           if (!res.ok) throw new Error(`HTTP 錯誤! 狀態碼: ${res.status}`);
           
           let text = await res.text();
