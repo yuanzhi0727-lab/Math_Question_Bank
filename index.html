@@ -45,8 +45,10 @@
     
     /* 題目預覽區樣式 */
     .preview-container { margin-top: 25px; }
-    .card { background: white; border-radius: 8px; padding: 18px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid #007acc; }
-    .card-title { font-size: 0.9em; color: #666; margin-bottom: 8px; font-weight: bold; }
+    .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .card { background: white; border-radius: 8px; padding: 18px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid #007acc; position: relative; }
+    .card-title { font-size: 0.9em; color: #666; margin-bottom: 8px; font-weight: bold; padding-left: 28px; }
+    .card-checkbox { position: absolute; top: 18px; left: 15px; width: 18px; height: 18px; cursor: pointer; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-right: 5px; background: #eee; }
     .badge-diff { background: #fff3e0; color: #e65100; }
     .badge-cat { background: #e8f5e9; color: #2e7d32; }
@@ -88,14 +90,21 @@
   <br><br>
   <button class="btn-primary" onclick="copyOutput()">複製全部打包語法</button>
 
-  <!-- ✨ 複製純題目 (含 LaTeX 語法) 按鈕 -->
-  <button class="btn-primary" style="background-color: #2e7d32; margin-left: 10px;" onclick="copyPreviewContent()">📋 複製題目內文 (含 LaTeX)</button>
+  <!-- ✨ 複製選取題目 (含 LaTeX) 按鈕 -->
+  <button class="btn-primary" style="background-color: #2e7d32; margin-left: 10px;" onclick="copyPreviewContent()">📋 複製勾選題目 (含 LaTeX)</button>
 
   <hr style="margin-top: 30px; border: 0; border-top: 1px solid #ddd;">
 
   <!-- 即時預覽區域 -->
   <div class="preview-container">
-    <h2>📄 題目即時預覽區</h2>
+    <div class="preview-header">
+      <h2>📄 題目即時預覽區</h2>
+      <div>
+        <label style="cursor: pointer; font-size: 0.95em;">
+          <input type="checkbox" id="selectAll" checked onchange="toggleSelectAll(this)"> **全選 / 取消全選**
+        </label>
+      </div>
+    </div>
     <div id="previewList">
       <p style="color: #888;">請點擊篩選條件或按「套用篩選」預覽題目...</p>
     </div>
@@ -123,7 +132,6 @@
     let selectedConcepts = new Set();
 
     function initFilterUI() {
-      // 1. 收集所有不重複的「來源」、「難易度」與「概念標籤」
       const categories = new Set();
       const difficulties = new Set();
       const concepts = new Set();
@@ -134,21 +142,18 @@
         if (q.concepts) q.concepts.forEach(t => concepts.add(t));
       });
 
-      // 2. 渲染「取題來源」按鈕
       const catContainer = document.getElementById('categoryGroup');
       catContainer.innerHTML = `<button class="btn ${selectedCategory==='ALL'?'active':''}" onclick="setCategory('ALL')">全部來源</button>`;
       categories.forEach(cat => {
         catContainer.innerHTML += `<button class="btn ${selectedCategory===cat?'active':''}" onclick="setCategory('${cat}')">${cat}</button>`;
       });
 
-      // 3. 渲染「難易度」按鈕
       const diffContainer = document.getElementById('difficultyGroup');
       diffContainer.innerHTML = `<button class="btn ${selectedDifficulty==='ALL'?'active':''}" onclick="setDifficulty('ALL')">全部難度</button>`;
       difficulties.forEach(diff => {
         diffContainer.innerHTML += `<button class="btn ${selectedDifficulty===diff?'active':''}" onclick="setDifficulty('${diff}')">${diff}</button>`;
       });
 
-      // 4. 渲染「試題概念」複選按鈕
       const conContainer = document.getElementById('conceptGroup');
       conContainer.innerHTML = '';
       concepts.forEach(con => {
@@ -160,7 +165,6 @@
         conContainer.appendChild(btn);
       });
 
-      // 執行篩選
       executeFilter();
     }
 
@@ -194,24 +198,19 @@
     async function executeFilter() {
       const kw = document.getElementById('keyword').value.trim().toLowerCase();
 
-      // 三維度交叉查詢 (AND 邏輯)
       const matched = questionBank.filter(q => {
-        // A. 檢查來源
         const matchCat = (selectedCategory === "ALL") || (q.categories && q.categories.includes(selectedCategory));
-        
-        // B. 檢查難度
         const matchDiff = (selectedDifficulty === "ALL") || (q.difficulty === selectedDifficulty);
-        
-        // C. 檢查概念 (必須包含所有選取的 concepts)
         const matchConcepts = selectedConcepts.size === 0 || Array.from(selectedConcepts).every(c => q.concepts && q.concepts.includes(c));
-        
-        // D. 補充關鍵字搜尋
         const matchKw = !kw || q.file.toLowerCase().includes(kw) || 
                         (q.concepts && q.concepts.some(c => c.toLowerCase().includes(kw))) ||
                         (q.categories && q.categories.some(cat => cat.toLowerCase().includes(kw)));
 
         return matchCat && matchDiff && matchConcepts && matchKw;
       });
+
+      // 重設「全選」勾選框
+      document.getElementById('selectAll').checked = true;
 
       // 1. 更新打包語法框
       const lines = matched.map(q => `@import "${q.file}"`).join('\n');
@@ -235,6 +234,7 @@
         const conceptStr = (q.concepts || []).join(', ');
 
         card.innerHTML = `
+          <input type="checkbox" class="card-checkbox q-checkbox" data-file="${q.file}" checked onchange="updateSelectAllStatus()">
           <div class="card-title">
             ${catBadges} ${diffBadge} 
             <span>📂 檔案：${q.file}</span>
@@ -249,8 +249,6 @@
           if (!res.ok) throw new Error(`HTTP 錯誤! 狀態碼: ${res.status}`);
           
           let text = await res.text();
-          
-          // 移除 YAML 前言 (Front Matter)
           text = text.replace(/^---[\s\S]*?---\n?/, '');
 
           card.querySelector('.card-body').innerHTML = marked.parse(text);
@@ -259,10 +257,22 @@
         }
       }
 
-      // 讓 MathJax 重新渲染數學公式
       if (window.MathJax && MathJax.typesetPromise) {
         MathJax.typesetPromise();
       }
+    }
+
+    // 全選 / 取消全選
+    function toggleSelectAll(master) {
+      const checkboxes = document.querySelectorAll('.q-checkbox');
+      checkboxes.forEach(cb => cb.checked = master.checked);
+    }
+
+    // 若手動取消勾選某題，自動取消「全選」勾選框
+    function updateSelectAllStatus() {
+      const checkboxes = document.querySelectorAll('.q-checkbox');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      document.getElementById('selectAll').checked = allChecked;
     }
 
     function copyOutput() {
@@ -273,37 +283,28 @@
       alert("已成功複製打包語法！");
     }
 
-    // ✨ 僅複製純題目內文 (自動剔除解答與解析，並保留 LaTeX 原始語法)
+    // ✨ 僅複製「已勾選」的題目內文 (含 LaTeX)
     async function copyPreviewContent() {
-      const kw = document.getElementById('keyword').value.trim().toLowerCase();
+      const selectedCheckboxes = document.querySelectorAll('.q-checkbox:checked');
       
-      const matched = questionBank.filter(q => {
-        const matchCat = (selectedCategory === "ALL") || (q.categories && q.categories.includes(selectedCategory));
-        const matchDiff = (selectedDifficulty === "ALL") || (q.difficulty === selectedDifficulty);
-        const matchConcepts = selectedConcepts.size === 0 || Array.from(selectedConcepts).every(c => q.concepts && q.concepts.includes(c));
-        const matchKw = !kw || q.file.toLowerCase().includes(kw) || 
-                        (q.concepts && q.concepts.some(c => c.toLowerCase().includes(kw))) ||
-                        (q.categories && q.categories.some(cat => cat.toLowerCase().includes(kw)));
-        return matchCat && matchDiff && matchConcepts && matchKw;
-      });
-
-      if (matched.length === 0) {
-        alert('目前沒有可複製的題目！');
+      if (selectedCheckboxes.length === 0) {
+        alert('請至少勾選一道題目！');
         return;
       }
 
       let questionsTextList = [];
 
-      for (const q of matched) {
+      for (const cb of selectedCheckboxes) {
+        const filePath = cb.getAttribute('data-file');
         try {
-          const res = await fetch(encodeURI('./' + q.file));
+          const res = await fetch(encodeURI('./' + filePath));
           if (!res.ok) continue;
           let text = await res.text();
 
-          // 1. 移除 YAML 前言 (Front Matter)
+          // 1. 移除 YAML 前言
           text = text.replace(/^---[\s\S]*?---\n?/, '');
 
-          // 2. 截斷解答與解析區塊（遇到 答/詳解/解析/Sol 等關鍵字就停止）
+          // 2. 裁切解答與解析區塊
           const splitRegex = /(###?\s*(解答|詳解|解析|答案)|#{1,3}\s*Sol)/i;
           const questionOnly = text.split(splitRegex)[0].trim();
 
@@ -311,7 +312,7 @@
             questionsTextList.push(questionOnly);
           }
         } catch (e) {
-          console.error(`讀取 ${q.file} 失敗:`, e);
+          console.error(`讀取 ${filePath} 失敗:`, e);
         }
       }
 
@@ -324,7 +325,7 @@
 
       try {
         await navigator.clipboard.writeText(fullTextToCopy);
-        alert('已成功複製純題目內容（含 LaTeX 語法）！');
+        alert(`已成功複製 ${questionsTextList.length} 道勾選題目（含 LaTeX）！`);
       } catch (err) {
         const tempTextArea = document.createElement('textarea');
         tempTextArea.value = fullTextToCopy;
@@ -332,7 +333,7 @@
         tempTextArea.select();
         document.execCommand('copy');
         document.body.removeChild(tempTextArea);
-        alert('已成功複製純題目內容（含 LaTeX 語法）！');
+        alert(`已成功複製 ${questionsTextList.length} 道勾選題目（含 LaTeX）！`);
       }
     }
 
