@@ -16,36 +16,77 @@
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f4f6f9; color: #333; }
     h1 { color: #2c3e50; }
-    .search-box { margin-bottom: 20px; }
-    input[type="text"] { width: 300px; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
-    button { padding: 10px 16px; font-size: 16px; background-color: #007acc; color: white; border: none; border-radius: 6px; cursor: pointer; margin-left: 8px; }
-    button:hover { background-color: #005999; }
-    .tags-container { margin: 15px 0; display: flex; gap: 8px; flex-wrap: wrap; }
-    .tag-btn { background: #e1f5fe; color: #0288d1; border: 1px solid #b3e5fc; padding: 6px 12px; border-radius: 20px; cursor: pointer; }
-    .tag-btn:hover { background: #b3e5fc; }
-    textarea { width: 100%; height: 120px; font-family: monospace; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    
+    /* 篩選區塊樣式 */
+    .filter-section { background: white; padding: 18px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .filter-group { margin-bottom: 12px; }
+    .filter-title { font-weight: bold; margin-bottom: 6px; color: #444; font-size: 0.95em; }
+    
+    .tags-container { display: flex; gap: 8px; flex-wrap: wrap; }
+    
+    /* 按鈕樣式 */
+    .btn { padding: 6px 12px; border-radius: 20px; border: 1px solid #ccc; background: #f0f0f0; color: #333; cursor: pointer; font-size: 0.9em; transition: all 0.2s; }
+    .btn:hover { background: #e0e0e0; }
+    .btn.active { background: #007acc; color: white; border-color: #005999; font-weight: bold; }
+    
+    /* 概念標籤（複選）特有顏色 */
+    .btn-concept { background: #e1f5fe; color: #0288d1; border-color: #b3e5fc; }
+    .btn-concept:hover { background: #b3e5fc; }
+    .btn-concept.active { background: #0288d1; color: white; border-color: #01579b; }
+
+    .search-box { margin-top: 15px; display: flex; gap: 10px; align-items: center; }
+    input[type="text"] { width: 280px; padding: 8px 12px; font-size: 15px; border: 1px solid #ccc; border-radius: 6px; }
+    .btn-primary { background-color: #007acc; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+    .btn-primary:hover { background-color: #005999; }
+    .btn-reset { background-color: #78909c; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+    .btn-reset:hover { background-color: #546e7a; }
+
+    textarea { width: 100%; height: 100px; font-family: monospace; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; margin-top: 10px; }
     
     /* 題目預覽區樣式 */
     .preview-container { margin-top: 25px; }
     .card { background: white; border-radius: 8px; padding: 18px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid #007acc; }
     .card-title { font-size: 0.9em; color: #666; margin-bottom: 8px; font-weight: bold; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-right: 5px; background: #eee; }
+    .badge-diff { background: #fff3e0; color: #e65100; }
+    .badge-cat { background: #e8f5e9; color: #2e7d32; }
   </style>
 </head>
 <body>
   <h1>📐 數學題庫檢索系統</h1>
   
-  <div class="search-box">
-    <input type="text" id="keyword" placeholder="輸入標籤或來源 (例: 團體賽, 排列組合)">
-    <button onclick="generateImports()">搜尋題目</button>
-  </div>
+  <!-- 三維度交叉篩選區 -->
+  <div class="filter-section">
+    <!-- 1. 取題來源 -->
+    <div class="filter-group">
+      <div class="filter-title">📌 取題來源（Source）：</div>
+      <div class="tags-container" id="categoryGroup"></div>
+    </div>
 
-  <p><strong>所有可用標籤與來源（點擊快速搜尋）：</strong></p>
-  <div class="tags-container" id="allTags"></div>
+    <!-- 2. 難易度 -->
+    <div class="filter-group">
+      <div class="filter-title">⚡ 難易度（Difficulty）：</div>
+      <div class="tags-container" id="difficultyGroup"></div>
+    </div>
+
+    <!-- 3. 試題內容/概念 (複選 AND 查詢) -->
+    <div class="filter-group">
+      <div class="filter-title">🏷️ 試題內容/概念（Tags，點擊可多選交叉查詢）：</div>
+      <div class="tags-container" id="conceptGroup"></div>
+    </div>
+
+    <!-- 關鍵字搜尋與重設 -->
+    <div class="search-box">
+      <input type="text" id="keyword" placeholder="補充關鍵字搜尋..." onkeyup="if(event.key==='Enter') executeFilter()">
+      <button class="btn-primary" onclick="executeFilter()">套用篩選</button>
+      <button class="btn-reset" onclick="resetFilters()">重設條件</button>
+    </div>
+  </div>
 
   <p><strong>打包輸出語法 (可直接複製貼入 Markdown)：</strong></p>
   <textarea id="output" readonly placeholder="搜尋結果語法會顯示在這裡..."></textarea>
   <br><br>
-  <button onclick="copyOutput()">複製全部打包語法</button>
+  <button class="btn-primary" onclick="copyOutput()">複製全部打包語法</button>
 
   <hr style="margin-top: 30px; border: 0; border-top: 1px solid #ddd;">
 
@@ -53,63 +94,151 @@
   <div class="preview-container">
     <h2>📄 題目即時預覽區</h2>
     <div id="previewList">
-      <p style="color: #888;">請點擊搜尋或標籤以預覽題目內容...</p>
+      <p style="color: #888;">請點擊篩選條件或按「套用篩選」預覽題目...</p>
     </div>
   </div>
 
   <script>
     // 資料庫（由 sync.ps1 自動更新）
     const questionBank = [
-  { file: "questions/Q2026-002.md", tags: ["2026TRML團體賽", "代數", "分式方程式", "競賽"] },
-  { file: "questions/Q2026-003.md", tags: ["2026TRML團體賽", "排列組合", "競賽"] },
-  { file: "questions/Q2026-004.md", tags: ["2026TRML團體賽", "數論", "質數與完全平方數", "競賽"] },
-  { file: "questions/Q2026-005.md", tags: ["2026TRML團體賽", "矩陣", "同餘與週期", "競賽"] },
-  { file: "questions/Q2026-006.md", tags: ["2026TRML團體賽", "遞迴與二項式定理", "同餘與週期", "競賽"] }
+  { file: "questions/Q2026-002.md", difficulty: "Medium", categories: ["TRML"], concepts: ["代數", "分式方程式"] },
+  { file: "questions/Q2026-003.md", difficulty: "Medium", categories: ["TRML"], concepts: ["排列組合"] },
+  { file: "questions/Q2026-004.md", difficulty: "Hard", categories: ["TRML"], concepts: ["數論", "質數與完全平方數"] },
+  { file: "questions/Q2026-005.md", difficulty: "Easy", categories: ["TRML"], concepts: ["矩陣", "同餘與週期"] },
+  { file: "questions/Q2026-006.md", difficulty: "Medium", categories: ["TRML"], concepts: ["遞迴與二項式定理", "同餘與週期"] },
+  { file: "questions/Q2026-007.md", difficulty: "Medium", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
+  { file: "questions/Q2026-008.md", difficulty: "Easy", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
+  { file: "questions/Q2026-009.md", difficulty: "Medium", categories: ["教甄"], concepts: ["函數", "函數方程", "算幾不等式", "迭代技巧"] },
+  { file: "questions/Q2026-010.md", difficulty: "Medium", categories: ["學科能力競賽"], concepts: ["函數", "函數方程", "迭代技巧"] },
+  { file: "questions/Q2026-011.md", difficulty: "Hard", categories: ["教甄"], concepts: ["函數", "函數方程", "迭代技巧"] },
+  { file: "questions/Q2026-012.md", difficulty: "未標示", categories: [], concepts: [] }
 ];
 
-    function initTags() {
-      const tagSet = new Set();
-      questionBank.forEach(q => q.tags.forEach(t => tagSet.add(t)));
-      
-      const container = document.getElementById('allTags');
-      container.innerHTML = '';
-      tagSet.forEach(tag => {
-        const span = document.createElement('span');
-        span.className = 'tag-btn';
-        span.innerText = tag;
-        span.onclick = () => quickSearch(tag);
-        container.appendChild(span);
+    // 當前篩選狀態
+    let selectedCategory = "ALL";
+    let selectedDifficulty = "ALL";
+    let selectedConcepts = new Set();
+
+    function initFilterUI() {
+      // 1. 收集所有不重複的「來源」、「難易度」與「概念標籤」
+      const categories = new Set();
+      const difficulties = new Set();
+      const concepts = new Set();
+
+      questionBank.forEach(q => {
+        if (q.categories) q.categories.forEach(c => categories.add(c));
+        if (q.difficulty) difficulties.add(q.difficulty);
+        if (q.concepts) q.concepts.forEach(t => concepts.add(t));
       });
+
+      // 2. 渲染「取題來源」按鈕
+      const catContainer = document.getElementById('categoryGroup');
+      catContainer.innerHTML = `<button class="btn ${selectedCategory==='ALL'?'active':''}" onclick="setCategory('ALL')">全部來源</button>`;
+      categories.forEach(cat => {
+        catContainer.innerHTML += `<button class="btn ${selectedCategory===cat?'active':''}" onclick="setCategory('${cat}')">${cat}</button>`;
+      });
+
+      // 3. 渲染「難易度」按鈕
+      const diffContainer = document.getElementById('difficultyGroup');
+      diffContainer.innerHTML = `<button class="btn ${selectedDifficulty==='ALL'?'active':''}" onclick="setDifficulty('ALL')">全部難度</button>`;
+      difficulties.forEach(diff => {
+        diffContainer.innerHTML += `<button class="btn ${selectedDifficulty===diff?'active':''}" onclick="setDifficulty('${diff}')">${diff}</button>`;
+      });
+
+      // 4. 渲染「試題概念」複選按鈕
+      const conContainer = document.getElementById('conceptGroup');
+      conContainer.innerHTML = '';
+      concepts.forEach(con => {
+        const isSelected = selectedConcepts.has(con);
+        const btn = document.createElement('button');
+        btn.className = `btn btn-concept ${isSelected ? 'active' : ''}`;
+        btn.innerText = con;
+        btn.onclick = () => toggleConcept(con);
+        conContainer.appendChild(btn);
+      });
+
+      // 執行篩選
+      executeFilter();
     }
 
-    function quickSearch(tag) {
-      document.getElementById('keyword').value = tag;
-      generateImports();
+    function setCategory(cat) {
+      selectedCategory = cat;
+      initFilterUI();
     }
 
-    async function generateImports() {
-      const kw = document.getElementById('keyword').value.trim();
-      if (!kw) return;
+    function setDifficulty(diff) {
+      selectedDifficulty = diff;
+      initFilterUI();
+    }
 
-      const matched = questionBank.filter(q => q.tags.some(t => t.toLowerCase().includes(kw.toLowerCase())));
-      
-      // 1. 更新語法框
+    function toggleConcept(con) {
+      if (selectedConcepts.has(con)) {
+        selectedConcepts.delete(con);
+      } else {
+        selectedConcepts.add(con);
+      }
+      initFilterUI();
+    }
+
+    function resetFilters() {
+      selectedCategory = "ALL";
+      selectedDifficulty = "ALL";
+      selectedConcepts.clear();
+      document.getElementById('keyword').value = '';
+      initFilterUI();
+    }
+
+    async function executeFilter() {
+      const kw = document.getElementById('keyword').value.trim().toLowerCase();
+
+      // 三維度交叉查詢 (AND 邏輯)
+      const matched = questionBank.filter(q => {
+        // A. 檢查來源
+        const matchCat = (selectedCategory === "ALL") || (q.categories && q.categories.includes(selectedCategory));
+        
+        // B. 檢查難度
+        const matchDiff = (selectedDifficulty === "ALL") || (q.difficulty === selectedDifficulty);
+        
+        // C. 檢查概念 (必須包含所有選取的 concepts)
+        const matchConcepts = selectedConcepts.size === 0 || Array.from(selectedConcepts).every(c => q.concepts && q.concepts.includes(c));
+        
+        // D. 補充關鍵字搜尋
+        const matchKw = !kw || q.file.toLowerCase().includes(kw) || 
+                        (q.concepts && q.concepts.some(c => c.toLowerCase().includes(kw))) ||
+                        (q.categories && q.categories.some(cat => cat.toLowerCase().includes(kw)));
+
+        return matchCat && matchDiff && matchConcepts && matchKw;
+      });
+
+      // 1. 更新打包語法框
       const lines = matched.map(q => `@import "${q.file}"`).join('\n');
-      document.getElementById('output').value = lines || "未找到符合的題目";
+      document.getElementById('output').value = lines || "未找到符合條件的題目";
 
-      // 2. 抓取題目檔案並渲染內文
+      // 2. 預覽題目
       const previewList = document.getElementById('previewList');
       previewList.innerHTML = '';
 
       if (matched.length === 0) {
-        previewList.innerHTML = '<p style="color: #888;">未找到符合的題目</p>';
+        previewList.innerHTML = '<p style="color: #888;">未找到符合條件的題目</p>';
         return;
       }
 
       for (const q of matched) {
         const card = document.createElement('div');
         card.className = 'card';
-        card.innerHTML = `<div class="card-title">📌 檔案：${q.file} | 標籤：${q.tags.join(', ')}</div><div class="card-body">載入中...</div>`;
+        
+        const catBadges = (q.categories || []).map(c => `<span class="badge badge-cat">📌 ${c}</span>`).join(' ');
+        const diffBadge = q.difficulty ? `<span class="badge badge-diff">⚡ ${q.difficulty}</span>` : '';
+        const conceptStr = (q.concepts || []).join(', ');
+
+        card.innerHTML = `
+          <div class="card-title">
+            ${catBadges} ${diffBadge} 
+            <span>📂 檔案：${q.file}</span>
+            <div style="margin-top: 4px;">🏷️ 概念：${conceptStr || '無'}</div>
+          </div>
+          <div class="card-body">載入中...</div>
+        `;
         previewList.appendChild(card);
 
         try {
@@ -117,12 +246,12 @@
           if (!res.ok) throw new Error('檔案讀取失敗');
           let text = await res.text();
           
-          // 移除 YAML 前言 (Front Matter) 避免顯示在畫面上
+          // 移除 YAML 前言 (Front Matter)
           text = text.replace(/^---[\s\S]*?---\n?/, '');
 
           card.querySelector('.card-body').innerHTML = marked.parse(text);
         } catch (e) {
-          card.querySelector('.card-body').innerHTML = `<span style="color:red;">⚠️ 讀取失敗（需透過 Live Server/Web Station 開啟才能載入本地 .md 檔）</span>`;
+          card.querySelector('.card-body').innerHTML = `<span style="color:red;">⚠️ 讀取失敗（需透過 Live Server/Web Station 開啟或部署至 GitHub Pages）</span>`;
         }
       }
 
@@ -140,17 +269,7 @@
       alert("已成功複製打包語法！");
     }
 
-    window.onload = initTags;
+    window.onload = initFilterUI;
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
