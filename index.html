@@ -242,8 +242,10 @@
         previewList.appendChild(card);
 
         try {
-          const res = await fetch(q.file);
-          if (!res.ok) throw new Error('檔案讀取失敗');
+          // 使用 encodeURI 確保路徑中若有特殊字元可正確讀取
+          const res = await fetch(encodeURI(q.file));
+          if (!res.ok) throw new Error(`HTTP 錯誤! 狀態碼: ${res.status}`);
+          
           let text = await res.text();
           
           // 移除 YAML 前言 (Front Matter)
@@ -251,9 +253,8 @@
 
           card.querySelector('.card-body').innerHTML = marked.parse(text);
         } catch (e) {
-          card.querySelector('.card-body').innerHTML = `<span style="color:red;">⚠️ 讀取失敗（需透過 Live Server/Web Station 開啟或部署至 GitHub Pages）</span>`;
+          card.querySelector('.card-body').innerHTML = `<span style="color:red;">⚠️ 讀取失敗 (${e.message})</span>`;
         }
-      }
 
       // 讓 MathJax 重新渲染數學公式
       if (window.MathJax && MathJax.typesetPromise) {
