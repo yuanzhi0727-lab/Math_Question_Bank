@@ -88,8 +88,8 @@
   <br><br>
   <button class="btn-primary" onclick="copyOutput()">複製全部打包語法</button>
 
-  <!-- ✨ 新增：複製題目內文給 Word 用的按鈕 -->
-<button class="btn-primary" style="background-color: #2e7d32; margin-left: 10px;" onclick="copyPreviewContent()">📋 複製題目內文 (可直接貼入 Word)</button>
+  <!-- ✨ 複製純題目 (含 LaTeX 語法) 按鈕 -->
+  <button class="btn-primary" style="background-color: #2e7d32; margin-left: 10px;" onclick="copyPreviewContent()">📋 複製題目內文 (含 LaTeX)</button>
 
   <hr style="margin-top: 30px; border: 0; border-top: 1px solid #ddd;">
 
@@ -245,7 +245,6 @@
         previewList.appendChild(card);
 
         try {
-          // 使用 encodeURI 確保路徑中若有特殊字元可正確讀取
           const res = await fetch(encodeURI('./' + q.file));
           if (!res.ok) throw new Error(`HTTP 錯誤! 狀態碼: ${res.status}`);
           
@@ -258,7 +257,7 @@
         } catch (e) {
           card.querySelector('.card-body').innerHTML = `<span style="color:red;">⚠️ 讀取失敗 (${e.message})</span>`;
         }
-      } // <--- 補上原本漏掉的迴圈結束大括號
+      }
 
       // 讓 MathJax 重新渲染數學公式
       if (window.MathJax && MathJax.typesetPromise) {
@@ -274,33 +273,67 @@
       alert("已成功複製打包語法！");
     }
 
-function copyPreviewContent() {
-      const previewList = document.getElementById('previewList');
-      if (!previewList || previewList.innerText.includes('未找到符合條件的題目') || previewList.innerText.includes('請點擊篩選條件')) {
+    // ✨ 僅複製純題目內文 (自動剔除解答與解析，並保留 LaTeX 原始語法)
+    async function copyPreviewContent() {
+      const kw = document.getElementById('keyword').value.trim().toLowerCase();
+      
+      const matched = questionBank.filter(q => {
+        const matchCat = (selectedCategory === "ALL") || (q.categories && q.categories.includes(selectedCategory));
+        const matchDiff = (selectedDifficulty === "ALL") || (q.difficulty === selectedDifficulty);
+        const matchConcepts = selectedConcepts.size === 0 || Array.from(selectedConcepts).every(c => q.concepts && q.concepts.includes(c));
+        const matchKw = !kw || q.file.toLowerCase().includes(kw) || 
+                        (q.concepts && q.concepts.some(c => c.toLowerCase().includes(kw))) ||
+                        (q.categories && q.categories.some(cat => cat.toLowerCase().includes(kw)));
+        return matchCat && matchDiff && matchConcepts && matchKw;
+      });
+
+      if (matched.length === 0) {
         alert('目前沒有可複製的題目！');
         return;
       }
 
-      // 選取預覽區的所有內容（保留 HTML 格式與公式）
-      const range = document.createRange();
-      range.selectNodeContents(previewList);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
+      let questionsTextList = [];
 
-      try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-          alert('已成功複製題目內文！現在可以直接開啟 Word 按 Ctrl + V 貼上了。');
-        } else {
-          alert('複製失敗，請直接手動框選預覽區內容複製。');
+      for (const q of matched) {
+        try {
+          const res = await fetch(encodeURI('./' + q.file));
+          if (!res.ok) continue;
+          let text = await res.text();
+
+          // 1. 移除 YAML 前言 (Front Matter)
+          text = text.replace(/^---[\s\S]*?---\n?/, '');
+
+          // 2. 截斷解答與解析區塊（遇到 答/詳解/解析/Sol 等關鍵字就停止）
+          const splitRegex = /(###?\s*(解答|詳解|解析|答案)|#{1,3}\s*Sol)/i;
+          const questionOnly = text.split(splitRegex)[0].trim();
+
+          if (questionOnly) {
+            questionsTextList.push(questionOnly);
+          }
+        } catch (e) {
+          console.error(`讀取 ${q.file} 失敗:`, e);
         }
-      } catch (err) {
-        alert('複製失敗：' + err);
       }
 
-      // 清除選擇狀態
-      selection.removeAllRanges();
+      if (questionsTextList.length === 0) {
+        alert('複製失敗，未抓取到題目文字！');
+        return;
+      }
+
+      const fullTextToCopy = questionsTextList.join('\n\n---\n\n');
+
+      try {
+        await navigator.clipboard.writeText(fullTextToCopy);
+        alert('已成功複製純題目內容（含 LaTeX 語法）！');
+      } catch (err) {
+        const tempTextArea = document.createElement('textarea');
+        tempTextArea.value = fullTextToCopy;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextArea);
+        alert('已成功複製純題目內容（含 LaTeX 語法）！');
+      }
     }
 
     window.onload = initFilterUI;
