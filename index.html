@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>數學題庫檢索系統</title>
+  <!-- 引入 Markdown 解析器與 MathJax 數學公式渲染器 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f4f6f9; color: #333; }
+    h1 { color: #2c3e50; }
+    .search-box { margin-bottom: 20px; }
+    input[type="text"] { width: 300px; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
+    button { padding: 10px 16px; font-size: 16px; background-color: #007acc; color: white; border: none; border-radius: 6px; cursor: pointer; margin-left: 8px; }
+    button:hover { background-color: #005999; }
+    .tags-container { margin: 15px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag-btn { background: #e1f5fe; color: #0288d1; border: 1px solid #b3e5fc; padding: 6px 12px; border-radius: 20px; cursor: pointer; }
+    .tag-btn:hover { background: #b3e5fc; }
+    textarea { width: 100%; height: 120px; font-family: monospace; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    
+    /* 題目預覽區樣式 */
+    .preview-container { margin-top: 25px; }
+    .card { background: white; border-radius: 8px; padding: 18px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid #007acc; }
+    .card-title { font-size: 0.9em; color: #666; margin-bottom: 8px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>📐 數學題庫檢索系統</h1>
+  
+  <div class="search-box">
+    <input type="text" id="keyword" placeholder="輸入標籤或來源 (例: 團體賽, 排列組合)">
+    <button onclick="generateImports()">搜尋題目</button>
+  </div>
+
+  <p><strong>所有可用標籤與來源（點擊快速搜尋）：</strong></p>
+  <div class="tags-container" id="allTags"></div>
+
+  <p><strong>打包輸出語法 (可直接複製貼入 Markdown)：</strong></p>
+  <textarea id="output" readonly placeholder="搜尋結果語法會顯示在這裡..."></textarea>
+  <br><br>
+  <button onclick="copyOutput()">複製全部打包語法</button>
+
+  <hr style="margin-top: 30px; border: 0; border-top: 1px solid #ddd;">
+
+  <!-- 即時預覽區域 -->
+  <div class="preview-container">
+    <h2>📄 題目即時預覽區</h2>
+    <div id="previewList">
+      <p style="color: #888;">請點擊搜尋或標籤以預覽題目內容...</p>
+    </div>
+  </div>
+
+  <script>
+    // 資料庫（由 sync.ps1 自動更新）
+    const questionBank = [
+  { file: "questions/Q2026-002.md", tags: ["2026TRML團體賽", "代數", "分式方程式", "競賽"] },
+  { file: "questions/Q2026-003.md", tags: ["2026TRML團體賽", "排列組合", "競賽"] },
+  { file: "questions/Q2026-004.md", tags: ["2026TRML團體賽", "數論", "質數與完全平方數", "競賽"] },
+  { file: "questions/Q2026-005.md", tags: ["2026TRML團體賽", "矩陣", "同餘與週期", "競賽"] },
+  { file: "questions/Q2026-006.md", tags: ["2026TRML團體賽", "遞迴與二項式定理", "同餘與週期", "競賽"] }
+];
+
+    function initTags() {
+      const tagSet = new Set();
+      questionBank.forEach(q => q.tags.forEach(t => tagSet.add(t)));
+      
+      const container = document.getElementById('allTags');
+      container.innerHTML = '';
+      tagSet.forEach(tag => {
+        const span = document.createElement('span');
+        span.className = 'tag-btn';
+        span.innerText = tag;
+        span.onclick = () => quickSearch(tag);
+        container.appendChild(span);
+      });
+    }
+
+    function quickSearch(tag) {
+      document.getElementById('keyword').value = tag;
+      generateImports();
+    }
+
+    async function generateImports() {
+      const kw = document.getElementById('keyword').value.trim();
+      if (!kw) return;
+
+      const matched = questionBank.filter(q => q.tags.some(t => t.toLowerCase().includes(kw.toLowerCase())));
+      
+      // 1. 更新語法框
+      const lines = matched.map(q => `@import "${q.file}"`).join('\n');
+      document.getElementById('output').value = lines || "未找到符合的題目";
+
+      // 2. 抓取題目檔案並渲染內文
+      const previewList = document.getElementById('previewList');
+      previewList.innerHTML = '';
+
+      if (matched.length === 0) {
+        previewList.innerHTML = '<p style="color: #888;">未找到符合的題目</p>';
+        return;
+      }
+
+      for (const q of matched) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<div class="card-title">📌 檔案：${q.file} | 標籤：${q.tags.join(', ')}</div><div class="card-body">載入中...</div>`;
+        previewList.appendChild(card);
+
+        try {
+          const res = await fetch(q.file);
+          if (!res.ok) throw new Error('檔案讀取失敗');
+          let text = await res.text();
+          
+          // 移除 YAML 前言 (Front Matter) 避免顯示在畫面上
+          text = text.replace(/^---[\s\S]*?---\n?/, '');
+
+          card.querySelector('.card-body').innerHTML = marked.parse(text);
+        } catch (e) {
+          card.querySelector('.card-body').innerHTML = `<span style="color:red;">⚠️ 讀取失敗（需透過 Live Server/Web Station 開啟才能載入本地 .md 檔）</span>`;
+        }
+      }
+
+      // 讓 MathJax 重新渲染數學公式
+      if (window.MathJax && MathJax.typesetPromise) {
+        MathJax.typesetPromise();
+      }
+    }
+
+    function copyOutput() {
+      const copyText = document.getElementById("output");
+      if (!copyText.value) return;
+      copyText.select();
+      document.execCommand("copy");
+      alert("已成功複製打包語法！");
+    }
+
+    window.onload = initTags;
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
