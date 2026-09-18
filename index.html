@@ -52,6 +52,9 @@
     .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-right: 5px; background: #eee; }
     .badge-diff { background: #fff3e0; color: #e65100; }
     .badge-cat { background: #e8f5e9; color: #2e7d32; }
+    
+    /* 確保預覽卡片內的圖片限制最大寬度，不超出容器 */
+    .card-body img { max-width: 100%; height: auto; display: block; margin: 10px 0; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -101,7 +104,7 @@
       <h2>📄 題目即時預覽區</h2>
       <div>
         <label style="cursor: pointer; font-size: 0.95em;">
-          <input type="checkbox" id="selectAll" checked onchange="toggleSelectAll(this)"> **全選 / 取消全選**
+          <input type="checkbox" id="selectAll" checked onchange="toggleSelectAll(this)"> 全選 / 取消全選
         </label>
       </div>
     </div>
@@ -260,17 +263,18 @@
           text = text.replace(/^---[\s\S]*?---\n?/, '');
 
           // 1. 將 Markdown 轉為 HTML 內文
-let htmlContent = marked.parse(text);
+          let htmlContent = marked.parse(text);
 
-// 2. 自動將圖片路徑中的 ../images/ 修復為 ./images/，確保網頁能正確讀取
-htmlContent = htmlContent.replace(/src="\.\.\/images\//g, 'src="./images/');
+          // 2. 正確替換相對路徑：把 src="../images/" 與 src="images/" 都修復為網頁根目錄的 src="./images/"
+          htmlContent = htmlContent.replace(/src=["'](?:\.\.\/|\.\/)?images\//g, 'src="./images/');
 
-card.querySelector('.card-body').innerHTML = htmlContent;
+          card.querySelector('.card-body').innerHTML = htmlContent;
         } catch (e) {
           card.querySelector('.card-body').innerHTML = `<span style="color:red;">⚠️ 讀取失敗 (${e.message})</span>`;
         }
       }
 
+      // 重新排版 MathJax 公式
       if (window.MathJax && MathJax.typesetPromise) {
         MathJax.typesetPromise();
       }
