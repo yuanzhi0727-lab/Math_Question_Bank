@@ -259,7 +259,13 @@
           let text = await res.text();
           text = text.replace(/^---[\s\S]*?---\n?/, '');
 
-          card.querySelector('.card-body').innerHTML = marked.parse(text);
+          // 1. 將 Markdown 轉為 HTML 內文
+let htmlContent = marked.parse(text);
+
+// 2. 自動將圖片路徑中的 ../images/ 修復為 ./images/，確保網頁能正確讀取
+htmlContent = htmlContent.replace(/src="\.\.\/images\//g, 'src="./images/');
+
+card.querySelector('.card-body').innerHTML = htmlContent;
         } catch (e) {
           card.querySelector('.card-body').innerHTML = `<span style="color:red;">⚠️ 讀取失敗 (${e.message})</span>`;
         }
